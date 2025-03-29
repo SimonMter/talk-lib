@@ -15,11 +15,9 @@ public class TalkFileManager {
 
         try(DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))){
 
-            //Write name
             dos.writeInt(talkFile.name.length());
             dos.writeUTF(talkFile.name);
 
-            //Write sound count
             dos.writeInt(talkFile.sounds.size());
             for(int i = 0; i < talkFile.sounds.size(); i++){
                 byte[] soundData = talkFile.sounds.get(i);
@@ -28,7 +26,6 @@ public class TalkFileManager {
                 dos.writeFloat(talkFile.probabilities.get(i));
             }
 
-            //Write profile picture
             if(talkFile.profilePicture != null) {
                 dos.writeInt(talkFile.profilePicture.length);
                 dos.write(talkFile.profilePicture);

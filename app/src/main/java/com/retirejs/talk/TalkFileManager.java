@@ -1,5 +1,9 @@
 package com.retirejs.talk;
 
+import com.retirejs.talk.Exceptions.TalkFileCorruptedException;
+import com.retirejs.talk.Exceptions.TalkFileException;
+import com.retirejs.talk.Exceptions.TalkFileNotFoundException;
+
 import java.io.*;
 
 public class TalkFileManager {
@@ -39,9 +43,10 @@ public class TalkFileManager {
         }
     }
 
-    public TalkFile loadTalkFile(String fileName){
+    public TalkFile loadTalkFile(String fileName) throws TalkFileException {
         File file = new File(storageDir, fileName + ".talk");
-        if (!file.exists()) return null;
+        if (!file.exists()) throw new TalkFileNotFoundException(fileName);
+        boolean fileIsCorrupted = false;
 
         try(DataInputStream dis = new DataInputStream(new FileInputStream(file))){
             int nameLength = dis.readInt();
@@ -65,6 +70,8 @@ public class TalkFileManager {
                 dis.readFully(image);
                 talkFile.setProfilePicture(image);
             }
+
+            if(fileIsCorrupted) throw new TalkFileCorruptedException(fileName);
             return talkFile;
         }catch (IOException e){
             e.printStackTrace();

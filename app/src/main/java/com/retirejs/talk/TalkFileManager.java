@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -138,11 +139,20 @@ public class TalkFileManager {
             }
 
             //READ CHECKSUM
+            byte[] checksum = null;
             if(fileVersion >= 2){
-                byte[] checksum = new byte[32];
+                checksum = new byte[32];
                 dis.readFully(checksum);
                 talkFile.setChecksum(checksum);
             }
+            // VERIFY CHECKSUM
+            if (fileVersion >= 2) {
+                byte[] computedChecksum = computeChecksum(talkFile);
+                if (!Arrays.equals(computedChecksum, checksum)) {
+                    throw new TalkFileCorruptedException(fileName);
+                }
+            }
+
 
             return talkFile;
         } catch (IOException e) {
@@ -173,5 +183,21 @@ public class TalkFileManager {
         long mostSigBits = buffer.getLong();
         long leastSigBits = buffer.getLong();
         return new UUID(mostSigBits, leastSigBits);
+    }
+
+    private byte[] computeChecksum(TalkFile talkFile) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(byteStream);
+
+        dos.writeUTF(talkFile.getName());
+
+        byte[] content = byteStream.toByteArray();
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(content);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IOException("SHA-256 algorithm not available.", e);
+        }
     }
 }

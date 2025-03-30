@@ -5,40 +5,70 @@ import com.retirejs.talk.Exceptions.TalkFileException;
 import com.retirejs.talk.Exceptions.TalkFileNotFoundException;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class TalkFileManager {
     private final File storageDir;
 
     public TalkFileManager(File rootDir) {
         this.storageDir = rootDir;
-        if(!storageDir.exists()) storageDir.mkdirs();
+        if (!storageDir.exists()) storageDir.mkdirs();
     }
+    public void saveTalkFile(TalkFile talkFile) {
+        File file = new File(storageDir, talkFile.getName() + ".talk");
 
-    public void saveTalkFile(TalkFile talkFile){
-        File file = new File(storageDir, talkFile.name + ".talk");
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
+            //VERSION
+            dos.writeInt(talkFile.getFileVersion());
 
-        try(DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))){
+            //UUID
+            byte[] uuidBytes = toBytes(talkFile.getUuid());
+            dos.write(uuidBytes);
 
-            dos.writeInt(talkFile.name.length());
-            dos.writeUTF(talkFile.name);
+            //TIMESTAMPS
+            dos.writeLong(talkFile.getCreatedTimeStamp());
+            dos.writeLong(talkFile.getLastModifiedTimeStamp());
 
-            dos.writeInt(talkFile.sounds.size());
-            for(int i = 0; i < talkFile.sounds.size(); i++){
-                byte[] soundData = talkFile.sounds.get(i);
+            //NAME
+            dos.writeUTF(talkFile.getName());
+
+            //SOUNDS
+            dos.writeInt(talkFile.getSounds().size());
+            for (int i = 0; i < talkFile.getSounds().size(); i++) {
+                byte[] soundData = talkFile.getSounds().get(i);
                 dos.writeInt(soundData.length);
                 dos.write(soundData);
-                dos.writeFloat(talkFile.probabilities.get(i));
+                dos.writeFloat(talkFile.getProbabilities().get(i));
             }
 
-            if(talkFile.profilePicture != null) {
-                dos.writeInt(talkFile.profilePicture.length);
-                dos.write(talkFile.profilePicture);
-            }else{
-                dos.writeInt(0);
+            //PROFILE PICTURES (multiple support in Version 2)
+            dos.writeInt(talkFile.getProfilePictures().size());
+            for(byte[] picture : talkFile.getProfilePictures()){
+                dos.writeInt(picture.length);
+                dos.write(picture);
             }
+
+            //TAGS
+            dos.writeInt(talkFile.getTags().size());
+            for(String tag : talkFile.getTags()){
+                dos.writeUTF(tag);
+            }
+
+            //CHECKSUM (SHA-256 hash)
+            byte[] checksum = talkFile.getChecksum();
+            if(checksum == null){
+                checksum = calculateChecksum(file);
+                talkFile.setChecksum(checksum);
+            }
+            dos.write(checksum);
+
             dos.flush();
-
-        }catch (IOException e){
+        } catch (IOException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
     }
@@ -46,36 +76,102 @@ public class TalkFileManager {
     public TalkFile loadTalkFile(String fileName) throws TalkFileException {
         File file = new File(storageDir, fileName + ".talk");
         if (!file.exists()) throw new TalkFileNotFoundException(fileName);
-        boolean fileIsCorrupted = false;
 
-        try(DataInputStream dis = new DataInputStream(new FileInputStream(file))){
-            int nameLength = dis.readInt();
-            String name = dis.readUTF();
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
+            //READ VERSION
+            int fileVersion = dis.readInt();
+            if (fileVersion > TalkFile.CURRENT_VERSION) {
+                throw new TalkFileException("TalkFile version " + fileVersion + " is not supported.");
+            }
+            //READ UUID
+            UUID uuid = null;
+            if(fileVersion >= 2){
+                byte[] uuidBytes = new byte[16];
+                dis.readFully(uuidBytes);
+                uuid = toUUID(uuidBytes);
+            }
 
-            TalkFile talkFile = new TalkFile(name);
+            long createdTimeStamp = 0;
+            long lastModifiedTimeStamp = 0;
+            if(fileVersion >= 2){
+                createdTimeStamp = dis.readLong();
+                lastModifiedTimeStamp = dis.readLong();
+            }
+
+            //NAME
+            String loadedName = dis.readUTF();
+            TalkFile talkFile = new TalkFile(loadedName);
+            talkFile.setFileVersion(fileVersion);
+
+            //SET UUID AND TIMESTAMPS IF VERSION 2
+            if(fileVersion >= 2){
+                talkFile.setUuid(uuid);
+                talkFile.setCreatedTimeStamp(createdTimeStamp);
+                talkFile.setLastModifiedTimeStamp(lastModifiedTimeStamp);
+            }
+
+            //READ SOUNDS
             int soundCount = dis.readInt();
-
-            for(int i = 0; i < soundCount; i++){
+            for (int i = 0; i < soundCount; i++) {
                 int soundLength = dis.readInt();
-                byte[] soundData = new byte[soundLength];
-                dis.readFully(soundData);
+                byte[] sound = new byte[soundLength];
+                dis.readFully(sound);
                 float probability = dis.readFloat();
-
-                talkFile.addSound(soundData, probability);
+                talkFile.addSound(sound, probability);
             }
 
-            int imageLength = dis.readInt();
-            if(imageLength > 0){
-                byte[] image = new byte[imageLength];
-                dis.readFully(image);
-                talkFile.setProfilePicture(image);
+            int pictureCount = dis.readInt();
+            for (int i = 0; i < pictureCount; i++) {
+                int pictureLength = dis.readInt();
+                byte[] picture = new byte[pictureLength];
+                dis.readFully(picture);
+                talkFile.addProfilePicture(picture);
             }
 
-            if(fileIsCorrupted) throw new TalkFileCorruptedException(fileName);
+            //READ TAGS
+            if(fileVersion >= 2){
+                int tagCount = dis.readInt();
+                for (int i = 0; i < tagCount; i++) {
+                    String tag = dis.readUTF();
+                    talkFile.addTag(tag);
+                }
+            }
+
+            //READ CHECKSUM
+            if(fileVersion >= 2){
+                byte[] checksum = new byte[32];
+                dis.readFully(checksum);
+                talkFile.setChecksum(checksum);
+            }
+
             return talkFile;
-        }catch (IOException e){
-            e.printStackTrace();
-            return null;
+        } catch (IOException e) {
+            throw new TalkFileCorruptedException(fileName);
         }
+    }
+
+
+    private byte[] toBytes(UUID uuid) {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[16]);
+        buffer.putLong(uuid.getMostSignificantBits());
+        buffer.putLong(uuid.getLeastSignificantBits());
+        return buffer.array();
+    }
+    private byte[] calculateChecksum(File file) throws IOException, NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] byteArray = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = fis.read(byteArray)) != -1) {
+                digest.update(byteArray, 0, bytesRead);
+            }
+        }
+        return digest.digest();
+    }
+    private UUID toUUID(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        long mostSigBits = buffer.getLong();
+        long leastSigBits = buffer.getLong();
+        return new UUID(mostSigBits, leastSigBits);
     }
 }

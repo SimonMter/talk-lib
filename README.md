@@ -92,17 +92,19 @@ talkFile.addSound(soundData2, 0.7f);
 talkFile.addProfilePicture(profilePicture);
 talkFile.addTag("robot");
 talkFile.addTag("calm");
-Saving a TalkFile
+```
+### Saving a TalkFile
 
+```java
 TalkFileManager talkFileManager = new TalkFileManager(new File("storage"));
 talkFileManager.saveTalkFile(talkFile);
 ```
-## Loading a TalkFile
+### Loading a TalkFile
 ```java
 TalkFile loadedTalkFile = talkFileManager.loadTalkFile("exampleFile");
-
-Handling File Integrity
 ```
+Handling File Integrity
+
 When loading a TalkFile, the checksum is verified automatically. If the file has been corrupted or altered, an exception will be thrown.
 ```java
 try {

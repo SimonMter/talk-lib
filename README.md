@@ -51,7 +51,7 @@ The `.talk` file format supports **versioning** to allow backward compatibility 
     - Adds **timestamps** for creation and modification times.
     - Allows multiple **profile pictures**.
     - Adds **tags** for categorization.
-    - Implements a **checksum** to ensure file integrity.
+    - Implements a **checksum** to ensure file integrity. **NOTE: THIS FEATURE IS CURRENTLY DISABLED DUE TO MALFUNCTION, I AM WORKING ON A FIX**
 
 ### Version 1 File Format:
 

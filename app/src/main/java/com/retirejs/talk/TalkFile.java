@@ -101,4 +101,21 @@ public class TalkFile {
     public void setFileVersion(int fileVersion) {
         this.fileVersion = fileVersion;
     }
+
+    @Override
+    public String toString(){
+        StringBuilder sb = new StringBuilder();
+        sb.append("TalkFile{");
+        sb.append("name='").append(name).append('\'');
+        sb.append(", uuid=").append(uuid);
+        sb.append(", createdTimeStamp=").append(createdTimeStamp);
+        sb.append(", lastModifiedTimeStamp=").append(lastModifiedTimeStamp);
+        sb.append(", sounds=").append(sounds.size());
+        sb.append(", probabilities=").append(probabilities.size());
+        sb.append(", profilePictures=").append(profilePicture.size());
+        sb.append(", tags=").append(tags.size());
+        sb.append('}');
+        return sb.toString();
+    }
+
 }

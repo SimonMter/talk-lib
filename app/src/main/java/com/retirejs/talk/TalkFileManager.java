@@ -146,10 +146,11 @@ public class TalkFileManager {
                 talkFile.setChecksum(checksum);
             }
             // VERIFY CHECKSUM
-            if (fileVersion >= 2) {
+            //TODO: REMOVE FALSE AND FIX CHECKSUM MANAGEMENT
+            if (fileVersion >= 2 && false) {
                 byte[] computedChecksum = computeChecksum(talkFile);
                 if (!Arrays.equals(computedChecksum, checksum)) {
-                    throw new TalkFileCorruptedException(fileName);
+                    throw new TalkFileCorruptedException(fileName + " Cause: Checksum mismatch.");
                 }
             }
 

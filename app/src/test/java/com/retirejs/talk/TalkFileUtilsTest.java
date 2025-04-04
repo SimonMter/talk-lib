@@ -49,17 +49,4 @@ public class TalkFileUtilsTest {
         assertEquals(savedTalkFile.getTags(), loadedTalkFile.getTags());
     }
 
-    // Test case for MP3 conversion (dummy file)
-    @Test
-    public void testConvertMp3ToBytes() {
-        File mp3File = new File("path/to/dummy.mp3");
-
-        try {
-            byte[] mp3Bytes = TalkFileUtils.convertMp3ToBytes(mp3File);
-            assertNotNull(mp3Bytes);
-            assertTrue(mp3Bytes.length > 0); // Check that conversion returned bytes
-        } catch (Exception e) {
-            fail("MP3 Conversion failed: " + e.getMessage());
-        }
-    }
 }

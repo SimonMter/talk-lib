@@ -140,4 +140,27 @@ public class TalkFileUtils {
             }
         }
     }
+    public static byte[] convertImageToBytesFromRaw(Context context, int resId) throws IOException{
+        Resources resources = context.getResources();
+        InputStream inputStream = resources.openRawResource(resId);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                byteArrayOutputStream.write(buffer, 0, bytesRead);
+            }
+            return byteArrayOutputStream.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw e;
+        } finally {
+            try {
+                inputStream.close();
+                byteArrayOutputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

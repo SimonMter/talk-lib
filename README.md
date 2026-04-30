@@ -1,191 +1,165 @@
 # talk-lib v3
 
-A modern, extensible binary file format and Java library for storing and managing **audio-based personality data** (sounds, metadata, images, and tags).
+This is the number #1 library to interact with `.talk` data files.
+
+This library was developed to be used in the Android application **"Sprechende Respektspersonen"** by **SJ-DEV-DYNAMICS**.
 
 ---
 
-# 🚀 Overview
+# Overview
 
-`talk-lib` provides a structured way to store and load `.talk` files with:
+`talk-lib` is a Java-based binary serialization library designed for storing and loading structured `.talk` files. These files are used to represent audio-driven personality data, including sounds, metadata, images, and tags.
 
-* 🎵 Audio samples + probabilities
-* 🖼 Profile pictures
-* 🏷 Tags for categorization
-* 🧾 Metadata (UUID, timestamps, name)
-* 🔐 File integrity via SHA-256 checksum
-* 🔄 Forward-compatible versioning
+The format is optimized for performance, extensibility, and data integrity.
 
 ---
 
-# 🛠 Usage
+# Features
 
-### 1. Create a TalkFile
+- Audio samples with probability weighting
+- Profile image storage
+- Tag-based categorization
+- Structured metadata (UUID, timestamps, name)
+- SHA-256 checksum integrity validation
+- Chunk-based binary format
+- Strict version control
+- Custom exception hierarchy for precise error handling
+
+---
+
+# Usage
+
+## Create a TalkFile
+
 ```java
 TalkFile tf = new TalkFile("My Personality");
 
-// Add sounds with a probability (0.0 to 1.0)
+// Add sound samples
 tf.addSound(new byte[]{0x01, 0x02, 0x03}, 0.85f);
 
 // Add tags
 tf.addTag("robot");
 tf.addTag("friendly");
 
-// Add profile pictures
-tf.addProfilePicture(someImageData);
+// Add profile picture
+tf.addProfilePicture(imageBytes);
 ```
-
-### 2. Save to File
+Save a TalkFile
 ```java
 TalkFileManager manager = new TalkFileManager();
 File file = new File("mydata.talk");
 
 try {
     manager.save(file, tf);
+} catch (TalkFileException e) {
+    e.printStackTrace();
 } catch (IOException e) {
     e.printStackTrace();
 }
 ```
-
-### 3. Load from File
+Load a TalkFile
 ```java
 try {
     TalkFile loaded = manager.load(file);
     System.out.println("Loaded: " + loaded.getName());
 } catch (TalkFileException e) {
-    // Handle specific exceptions like TalkFileNotFoundException or TalkFileCorruptedException
-    e.printStackTrace();
-} catch (IOException e) {
+    // Handles format, corruption, version, and missing file errors
     e.printStackTrace();
 }
 ```
+File Format (v3)
+Structure Overview
 
----
-
-# 📦 File Format (v3)
-
-## 🔑 Core Concept: Chunk-Based Structure
-
-Instead of fixed offsets, the file is composed of **independent chunks**:
-
+A .talk file is composed of:
 ```
 [ MAGIC ][ VERSION ][ CHUNKS... ][ CHECKSUM ]
 ```
+Header
+Field	Type	Description
+MAGIC	4 bytes	Fixed identifier: "TALK"
+VERSION	int	File format version
+Chunk Format
 
----
-
-## 🧱 Header
-
-| Field   | Type    | Description             |
-| ------- | ------- | ----------------------- |
-| Magic   | 4 bytes | `"TALK"` identifier     |
-| Version | int     | Format version (e.g. 3) |
-
----
-
-## 🧩 Chunk Format
-
-Each chunk follows:
-
+Each chunk follows a strict structure:
 ```
-4 bytes  → Chunk ID (ASCII, padded with spaces to 4 bytes)
-4 bytes  → Chunk Size (int)
-N bytes  → Data
+4 bytes  → Chunk ID (ASCII, padded to 4 bytes)
+4 bytes  → Chunk size (int)
+N bytes  → Chunk data
 ```
-
-### Supported Chunk IDs:
-
-| ID     | Purpose          |
-| ------ | ---------------- |
-| `META` | Metadata         |
-| `SND ` | Sounds           |
-| `IMG ` | Profile Pictures |
-| `TAG ` | Tags             |
-
----
-
-## 📄 Chunk Definitions
-
-### `META` (Metadata)
-
-```
+Supported Chunk Types
+ID	Description
+META	Metadata
+SND	Sound data
+IMG	Profile images
+TAG	Tags
+Chunk Details
+META
 UUID (16 bytes)
-Created Timestamp (long)
-Modified Timestamp (long)
-Name Length (int)
-Name (UTF-8)
-```
-
----
-
-### `SND ` (Sounds)
-
-```
-Sound Count (int)
+Created timestamp (long)
+Modified timestamp (long)
+Name length (int)
+Name (UTF-8 string)
+SND
+Sound count (int)
 
 For each sound:
-    Data Length (int)
+    Data length (int)
     Probability (float)
-    Data (byte[])
-```
-
----
-
-### `IMG ` (Profile Pictures)
-
-```
-Image Count (int)
+    Raw sound bytes
+IMG
+Image count (int)
 
 For each image:
-    Data Length (int)
-    Data (byte[])
-```
-
----
-
-### `TAG ` (Tags)
-
-```
-Tag Count (int)
+    Data length (int)
+    Image bytes
+TAG
+Tag count (int)
 
 For each tag:
     Length (int)
-    UTF-8 String
-```
+    UTF-8 string
+Checksum
+Algorithm: SHA-256
+Scope: all data except the checksum field itself
+Size: 32 bytes
+Purpose: ensures file integrity and detects corruption
+Error Handling
 
----
+The library uses a structured exception hierarchy:
 
-## 🔐 Checksum
+Base Exception
+TalkFileException
+Specific Exceptions
+TalkFileNotFoundException
+File does not exist or cannot be accessed
+TalkFileCorruptedException
+Checksum mismatch or data corruption detected
+TalkFileFormatException
+Invalid structure, chunk format, or magic header
+TalkFileVersionException
+Unsupported file version encountered
+Testing
 
-* Algorithm: **SHA-256**
-* Covers: **everything except the checksum itself** (Magic, Version, and all Chunks)
-* Size: 32 bytes (appended at the end)
+Run all unit tests:
 
----
-
-# ⚠️ Error Handling
-
-The library uses a custom exception hierarchy for more granular error handling:
-
-* `TalkFileException` (Base checked exception)
-    * `TalkFileNotFoundException`: Thrown when a file cannot be located.
-    * `TalkFileCorruptedException`: Thrown when the checksum verification fails or the file structure is invalid.
-    * `TalkFileFormatException`: Thrown when the file magic identifier is incorrect.
-    * `TalkFileVersionException`: Thrown when an unsupported file version is encountered.
-
----
-
-# 🧪 Testing
-
-To run the unit tests, use the following Gradle command:
-
-```bash
 ./gradlew test
-```
+
+Recommended test coverage includes:
+
+Stress tests with large datasets
+Corruption handling
+Randomized fuzz testing
+Serialization integrity validation
+Versioning Strategy
+Each file contains a version field in the header
+Future versions may add or modify chunk types
+Unknown chunks are ignored during parsing
+Backward compatibility is preserved through chunk-based parsing
+Design Goals
+Deterministic binary serialization
+High performance file IO
+Clear separation of data chunks
+Robust corruption detection
+Extensible format without breaking changes
 
 ---
-
-# 💡 Versioning Strategy
-
-* The **file version only affects which chunks exist**
-* Unknown chunks are **skipped automatically** during reading.
-* This ensures both **backward** and **forward compatibility**.

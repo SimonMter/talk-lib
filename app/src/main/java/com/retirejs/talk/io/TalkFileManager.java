@@ -1,5 +1,9 @@
 package com.retirejs.talk.io;
 
+import android.os.Build;
+
+import androidx.annotation.RequiresApi;
+
 import com.retirejs.talk.model.TalkFile;
 
 import java.io.*;
@@ -25,6 +29,7 @@ public class TalkFileManager {
     }
 
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     public TalkFile load(File file) throws IOException {
 
         if (!file.exists()) {

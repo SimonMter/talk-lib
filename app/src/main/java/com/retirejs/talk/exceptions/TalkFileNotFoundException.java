@@ -1,7 +1,10 @@
 package com.retirejs.talk.exceptions;
 
-public class TalkFileNotFoundException extends RuntimeException {
-    public TalkFileNotFoundException(String message) {
-        super(message);
+import java.io.File;
+
+public class TalkFileNotFoundException extends TalkFileException {
+
+    public TalkFileNotFoundException(File file) {
+        super("Talk file not found: " + file.getAbsolutePath());
     }
 }

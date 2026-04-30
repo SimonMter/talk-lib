@@ -1,125 +1,401 @@
-# talk-lib
- 
-This is the number #1 library to interact with .talk data files.
+# talk-lib v3
 
-This library was developed to be used in the Android Application "Sprechende Respektspersonen" by SJ-DEV-DYNAMICS
+A modern, extensible binary file format and Java library for storing and managing **audio-based personality data** (sounds, metadata, images, and tags).
 
-# TalkFile Library
+---
 
-## Overview
+# 🚀 Overview
 
-The `TalkFile` library is a custom file management system for storing and loading **talk files** in a specific format. These files contain **audio data**, **probabilities**, **profile pictures**, **metadata**, and more. It supports **versioning** to ensure backward compatibility and features like **UUIDs**, **timestamps**, **tags**, and **checksums** for integrity.
+`talk-lib` provides a structured way to store and load `.talk` files with:
 
-## Features
+* 🎵 Audio samples + probabilities
+* 🖼 Profile pictures
+* 🏷 Tags for categorization
+* 🧾 Metadata (UUID, timestamps, name)
+* 🔐 File integrity via checksum
+* 🔄 Forward-compatible versioning
 
-- **Versioning**: Supports multiple versions of the `.talk` file format to ensure backward compatibility.
-- **UUID**: Each file has a **unique identifier** to prevent conflicts.
-- **Timestamps**: Tracks **creation** and **modification** times of the file.
-- **Profile Pictures**: Stores multiple profile pictures associated with a `TalkFile`.
-- **Tags**: Allows categorization of files with **custom tags**.
-- **Checksum**: Ensures file integrity using **SHA-256** hash.
+This version (v3) introduces a **chunk-based binary format**, making files easier to extend, debug, and maintain.
 
-## File Format
+---
 
-The `.talk` file format contains the following fields:
+# 📦 File Format (v3)
 
-| Offset | Field                  | Type        | Description |
-|--------|------------------------|-------------|-------------|
-| 0      | **Version**             | `int`       | The version of the file format (e.g., v1, v2). |
-| 4      | **UUID**                | `byte[16]`  | Unique identifier for the file (introduced in v2). |
-| 20     | **Created Timestamp**   | `long`      | When the file was created (introduced in v2). |
-| 28     | **Modified Timestamp**  | `long`      | Last modification time (introduced in v2). |
-| 36     | **Name Length**         | `int`       | Length of the name string. |
-| 40     | **Name**                | `String`    | Name of the `TalkFile`. |
-| N      | **Sound Count**         | `int`       | Number of sounds stored in the file. |
-| N+4    | **Sounds**              | `byte[]`    | Sound data and associated probabilities. |
-| N+X    | **Profile Picture Count** | `int`     | Number of profile pictures. |
-| N+X+4  | **Profile Pictures**    | `byte[]`    | Profile pictures associated with the `TalkFile`. |
-| N+Y    | **Tag Count**           | `int`       | Number of tags. |
-| N+Y+4  | **Tags**                | `String[]`  | List of tags for categorizing the `TalkFile`. |
-| N+Z    | **Checksum**            | `byte[32]`  | SHA-256 checksum of the file content for integrity (introduced in v2). |
+## 🔑 Core Concept: Chunk-Based Structure
 
-## Versioning
+Instead of fixed offsets, the file is composed of **independent chunks**:
 
-The `.talk` file format supports **versioning** to allow backward compatibility and new features:
-
-- **Version 1**:
-    - Supports basic fields like name, sounds, profile pictures.
-    - Does not support UUIDs, timestamps, tags, or checksum.
-- **Version 2** (Current):
-    - Adds **UUID** for unique file identification.
-    - Adds **timestamps** for creation and modification times.
-    - Allows multiple **profile pictures**.
-    - Adds **tags** for categorization.
-    - Implements a **checksum** to ensure file integrity. **NOTE: THIS FEATURE IS CURRENTLY DISABLED DUE TO MALFUNCTION, I AM WORKING ON A FIX**
-
-### Version 1 File Format:
-
-The first version of the `.talk` file format does not include UUIDs, timestamps, tags, or checksum. It simply contains the name, sounds, and profile pictures.
-
-### Version 2 File Format:
-
-Version 2 includes all the features mentioned above, adding support for UUIDs, timestamps, tags, and a checksum for file integrity.
-
-## Methods
-
-### `TalkFileManager`
-
-- **saveTalkFile(TalkFile talkFile)**: Saves a `TalkFile` object to a `.talk` file. The version of the file is automatically set when saving.
-- **loadTalkFile(String fileName)**: Loads a `TalkFile` from a `.talk` file. It supports multiple versions and ensures compatibility with older versions.
-
-### `TalkFile`
-
-The `TalkFile` class represents the structure of the `.talk` file. It contains the following attributes:
-
-- **UUID**: A unique identifier for each file.
-- **Created Timestamp**: The creation time of the file.
-- **Modified Timestamp**: The last modification time of the file.
-- **Name**: The name of the `TalkFile`.
-- **Sounds**: A list of sound data (with associated probabilities).
-- **Profile Pictures**: A list of profile pictures.
-- **Tags**: A list of tags for categorization.
-- **Checksum**: A SHA-256 checksum for file integrity.
-
-## Usage
-
-### Creating a `TalkFile`
-
-```java
-TalkFile talkFile = new TalkFile("exampleFile");
-talkFile.addSound(soundData1, 0.9f);
-talkFile.addSound(soundData2, 0.7f);
-talkFile.addProfilePicture(profilePicture);
-talkFile.addTag("robot");
-talkFile.addTag("calm");
 ```
-### Saving a TalkFile
+[ MAGIC ][ VERSION ][ CHUNKS... ][ CHECKSUM ]
+```
+
+---
+
+## 🧱 Header
+
+| Field   | Type    | Description             |
+| ------- | ------- | ----------------------- |
+| Magic   | 4 bytes | `"TALK"` identifier     |
+| Version | int     | Format version (e.g. 3) |
+
+---
+
+## 🧩 Chunk Format
+
+Each chunk follows:
+
+```
+4 bytes  → Chunk ID (ASCII)
+4 bytes  → Chunk Size (int)
+N bytes  → Data
+```
+
+### Example Chunk IDs:
+
+| ID   | Purpose          |
+| ---- | ---------------- |
+| META | Metadata         |
+| SND  | Sounds           |
+| IMG  | Profile Pictures |
+| TAGS | Tags             |
+
+---
+
+## 📄 Chunk Definitions
+
+### META (Metadata)
+
+```
+UUID (16 bytes)
+Created Timestamp (long)
+Modified Timestamp (long)
+Name Length (int)
+Name (UTF-8)
+```
+
+---
+
+### SND (Sounds)
+
+```
+Sound Count (int)
+
+For each sound:
+    Data Length (int)
+    Probability (float)
+    Data (byte[])
+```
+
+---
+
+### IMG (Profile Pictures)
+
+```
+Image Count (int)
+
+For each image:
+    Data Length (int)
+    Data (byte[])
+```
+
+---
+
+### TAGS
+
+```
+Tag Count (int)
+
+For each tag:
+    Length (int)
+    UTF-8 String
+```
+
+---
+
+## 🔐 Checksum
+
+* Algorithm: **SHA-256**
+* Covers: **everything except the checksum itself**
+* Size: 32 bytes (appended at the end)
+
+---
+
+# 🧠 Versioning Strategy
+
+* The **file version only affects which chunks exist**
+* Unknown chunks are **skipped automatically**
+
+👉 This allows:
+
+* Backward compatibility
+* Forward compatibility
+
+---
+
+# 🛠 Java API Design
+
+## `TalkFile`
 
 ```java
-TalkFileManager talkFileManager = new TalkFileManager(new File("storage"));
-talkFileManager.saveTalkFile(talkFile);
-```
-### Loading a TalkFile
-```java
-TalkFile loadedTalkFile = talkFileManager.loadTalkFile("exampleFile");
-```
-Handling File Integrity
+class TalkFile {
+    UUID uuid;
+    long created;
+    long modified;
+    String name;
 
-When loading a TalkFile, the checksum is verified automatically. If the file has been corrupted or altered, an exception will be thrown.
-```java
-try {
-    TalkFile talkFile = talkFileManager.loadTalkFile("exampleFile");
-} catch (TalkFileException e) {
-    System.out.println("Error loading the file: " + e.getMessage());
+    List<SoundEntry> sounds;
+    List<byte[]> images;
+    List<String> tags;
 }
 ```
-Exceptions
 
-    TalkFileException: A general exception thrown for various errors related to the TalkFile format.
+---
 
-    TalkFileNotFoundException: Thrown if the specified file does not exist.
+## `SoundEntry`
 
-    TalkFileCorruptedException: Thrown if the file has been corrupted or its integrity cannot be verified.
+```java
+class SoundEntry {
+    byte[] data;
+    float probability;
+}
+```
 
+---
 
+## `TalkFileManager`
+
+### Save
+
+```java
+void save(File file, TalkFile talkFile);
+```
+
+### Load
+
+```java
+TalkFile load(File file);
+```
+
+---
+
+# 🧭 Implementation Roadmap
+
+## Phase 1 — Project Setup
+
+1. Create project structure:
+
+```
+talk-lib/
+ ├── model/
+ ├── io/
+ ├── util/
+ └── test/
+```
+
+2. Add core classes:
+
+* `TalkFile`
+* `SoundEntry`
+* `TalkFileManager`
+
+---
+
+## Phase 2 — Binary Writer (Start Here)
+
+👉 Implement writing BEFORE reading.
+
+### Steps:
+
+1. Open `ByteArrayOutputStream`
+2. Wrap with `DataOutputStream`
+3. Write:
+
+  * Magic `"TALK"`
+  * Version `3`
+4. Write chunks:
+
+  * META
+  * SND
+  * IMG
+  * TAGS
+5. Convert to byte array
+6. Compute SHA-256 checksum
+7. Append checksum
+8. Write to file
+
+---
+
+## Phase 3 — Binary Reader
+
+### Steps:
+
+1. Read file into byte array
+2. Extract last 32 bytes → checksum
+3. Verify checksum
+4. Wrap remaining data in `DataInputStream`
+5. Read:
+
+  * Magic (validate)
+  * Version
+6. Loop through chunks:
+
+```java
+while (input.available() > 0) {
+    read chunkId
+    read size
+    read data
+
+    switch(chunkId) {
+        case "META": parseMeta(...)
+        case "SND": parseSounds(...)
+        case "IMG": parseImages(...)
+        case "TAGS": parseTags(...)
+        default: skip
+    }
+}
+```
+
+---
+
+## Phase 4 — Checksum (Important Fix)
+
+### Correct Implementation:
+
+#### Writing:
+
+* Compute hash AFTER writing all data
+* Do NOT include checksum field
+
+#### Reading:
+
+* Remove last 32 bytes
+* Recompute hash
+* Compare
+
+---
+
+## Phase 5 — Testing
+
+Create test cases:
+
+* ✅ Empty file
+* ✅ File with 1 sound
+* ✅ Large file (many sounds/images)
+* ✅ Corrupted file (truncate bytes)
+* ✅ Unknown chunk (simulate future version)
+
+---
+
+## Phase 6 — Debug Tool (Highly Recommended)
+
+Build a CLI tool:
+
+```
+talk inspect file.talk
+talk extract file.talk
+```
+
+This helps:
+
+* Debug corrupted files
+* Validate structure
+* Inspect chunks
+
+---
+
+## Phase 7 — Optional Improvements
+
+### Compression
+
+* Compress SND + IMG chunks (GZIP)
+
+### Streaming
+
+* Load sounds lazily for large files
+
+### Encryption (optional)
+
+* Encrypt chunks if needed
+
+---
+
+# ⚡ Getting Started (Step-by-Step)
+
+## 1. Start with Writer
+
+Create:
+
+```
+io/TalkFileWriter.java
+```
+
+Goal:
+✔ Write a valid `.talk` file (no checksum first)
+
+---
+
+## 2. Add Reader
+
+Create:
+
+```
+io/TalkFileReader.java
+```
+
+Goal:
+✔ Load what you wrote
+
+---
+
+## 3. Add Checksum
+
+Goal:
+✔ Detect corrupted files
+
+---
+
+## 4. Refactor into Manager
+
+Combine into:
+
+```
+TalkFileManager
+```
+
+---
+
+## 5. Add Tests
+
+Make sure:
+✔ Load == Save
+✔ Corruption detected
+
+---
+
+# ⚠️ Common Mistakes
+
+❌ Mixing read/write order
+❌ Forgetting string encoding (use UTF-8!)
+❌ Including checksum in hash
+❌ Not validating lengths before reading arrays
+❌ Hardcoding offsets
+
+---
+
+# 💡 Final Notes
+
+* Keep the format **simple but structured**
+* Don’t over-optimize early
+* Chunk-based design = future-proof
+
+---
+
+# 📌 Next Steps
+
+If you want, I can:
+
+* Generate a **full Java implementation (writer + reader)**
+* Help you **fix your current checksum bug**
+* Add **compression support properly**
+* Or design a **v4 with streaming support**
 

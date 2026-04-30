@@ -3,6 +3,7 @@ package com.retirejs.talk.io;
 import com.retirejs.talk.io.chunk.*;
 import com.retirejs.talk.model.TalkFile;
 import com.retirejs.talk.util.ChecksumUtil;
+import com.retirejs.talk.util.Constants;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -14,15 +15,21 @@ public class TalkFileWriter{
             ByteArrayOutputStream rawOut = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(rawOut);
 
-            out.writeBytes("TALK");
-            out.writeInt(3);
+            out.writeBytes(Constants.MAGIC);
+            out.writeInt(Constants.VERSION);
 
             List<Chunk> chunks = buildChunks(file);
 
-            for(Chunk c : chunks){
-                byte[] data = c.encode();
+            for(Chunk chunk : chunks){
+                byte[] data = chunk.encode();
 
-                out.writeBytes(c.id());
+                byte[] idBytes = chunk.id().getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+                if (idBytes.length != 4) {
+                    throw new IllegalStateException("Chunk ID must be exactly 4 bytes: " + chunk.id());
+                }
+
+                out.write(idBytes);
                 out.writeInt(data.length);
                 out.write(data);
             }
